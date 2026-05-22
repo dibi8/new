@@ -1,10 +1,22 @@
-"""Main scheduler: pick a random unpublished article and publish to all platforms."""
+"""Main scheduler with anti-ban protections.
+
+Safety features:
+- Startup jitter (0-15 min random delay to avoid exact cron timing)
+- Random skip (15% chance to skip a run entirely, looks more human)
+- Inter-platform delays (1-5 min between posting to different platforms)
+- Per-platform daily caps and minimum intervals
+- Token validation before publishing
+- Shuffled platform order each run
+"""
 
 import logging
+import random
 import sys
 
+from . import config
 from .scraper import get_unpublished_article, save_published
 from .publishers import twitter, facebook, linkedin, medium, reddit
+from .safety import jitter_delay, human_delay
 
 logging.basicConfig(
     level=logging.INFO,
@@ -21,15 +33,44 @@ PLATFORMS = [
 ]
 
 
+def _validate_all_credentials() -> None:
+    """Check all configured platform credentials and warn about expiring tokens."""
+    logger.info("--- Credential validation ---")
+    for name, publisher in PLATFORMS:
+        if not publisher.is_configured():
+            continue
+        valid, msg = publisher.validate_credentials()
+        if valid:
+            logger.info("  %s: %s", name, msg)
+        else:
+            logger.warning("  %s: %s", name, msg)
+
+
 def run() -> None:
-    """Run one publish cycle: pick article, post to all configured platforms."""
+    """Run one publish cycle with all anti-ban protections."""
     logger.info("=== Starting publish cycle ===")
 
-    results: dict[str, bool] = {}
+    # 1. Random startup jitter to avoid posting at exact cron times
+    if config.STARTUP_JITTER_MAX > 0:
+        jitter_delay()
 
-    for platform_name, publisher in PLATFORMS:
+    # 2. Random skip: ~15% chance to skip this run entirely (looks more human)
+    if random.random() < config.RANDOM_SKIP_PROBABILITY:
+        logger.info("Random skip triggered (probability %.0f%%). Exiting.", config.RANDOM_SKIP_PROBABILITY * 100)
+        return
+
+    # 3. Validate credentials (warn about expired tokens)
+    _validate_all_credentials()
+
+    # 4. Shuffle platform order each run (avoids predictable patterns)
+    platforms = list(PLATFORMS)
+    random.shuffle(platforms)
+
+    results: dict[str, bool] = {}
+    skipped: list[str] = []
+
+    for platform_name, publisher in platforms:
         if not publisher.is_configured():
-            logger.info("Skipping %s (not configured)", platform_name)
             continue
 
         article = get_unpublished_article(platform_name)
@@ -44,21 +85,26 @@ def run() -> None:
         if success:
             save_published(platform_name, article.url)
             logger.info("Published and recorded: %s -> %s", article.url, platform_name)
-        else:
-            logger.error("Failed to publish to %s: %s", platform_name, article.title)
+        elif success is False and platform_name not in results:
+            skipped.append(platform_name)
+
+        # 5. Human delay between platforms (1-5 min)
+        human_delay(
+            config.INTER_PLATFORM_DELAY_MIN,
+            config.INTER_PLATFORM_DELAY_MAX,
+        )
 
     # Summary
     logger.info("=== Publish cycle complete ===")
     for platform_name, success in results.items():
-        status = "OK" if success else "FAILED"
+        status = "OK" if success else "FAILED/RATE-LIMITED"
         logger.info("  %s: %s", platform_name, status)
 
-    if not results:
-        logger.info("  No platforms configured. Set up API keys to enable publishing.")
+    if skipped:
+        logger.info("  Skipped (rate limited): %s", ", ".join(skipped))
 
-    # Exit with error code if any publication failed
-    if any(not s for s in results.values()):
-        sys.exit(1)
+    if not results:
+        logger.info("  No platforms published this cycle.")
 
 
 if __name__ == "__main__":

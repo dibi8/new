@@ -8,12 +8,18 @@ on:
     - cron: '0 14-22 * * *'
   workflow_dispatch:   # manual trigger
 
+# Prevent overlapping runs (previous run must finish before next starts)
+concurrency:
+  group: auto-publish
+  cancel-in-progress: false
+
 permissions:
-  contents: write     # push updated published.json back
+  contents: write     # push updated published.json and rate_limits.json back
 
 jobs:
   publish:
     runs-on: ubuntu-latest
+    timeout-minutes: 30    # safety net: max 30 min per run
 
     steps:
       - name: Checkout
@@ -29,6 +35,11 @@ jobs:
 
       - name: Run publisher
         env:
+          # --- Anti-Ban Settings ---
+          STARTUP_JITTER_MAX: '900'           # 0-15 min random startup delay
+          INTER_PLATFORM_DELAY_MIN: '60'      # 1-5 min between platforms
+          INTER_PLATFORM_DELAY_MAX: '300'
+          RANDOM_SKIP_PROBABILITY: '0.15'     # 15% chance to skip (looks human)
           # --- Twitter/X ---
           TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
           TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
@@ -47,13 +58,13 @@ jobs:
           REDDIT_CLIENT_SECRET: ${{ secrets.REDDIT_CLIENT_SECRET }}
           REDDIT_USERNAME: ${{ secrets.REDDIT_USERNAME }}
           REDDIT_PASSWORD: ${{ secrets.REDDIT_PASSWORD }}
-          REDDIT_SUBREDDIT: ${{ secrets.REDDIT_SUBREDDIT }}
+          REDDIT_SUBREDDITS: ${{ secrets.REDDIT_SUBREDDITS }}
         run: python run.py
 
-      - name: Commit published.json
+      - name: Commit tracking data
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/published.json
-          git diff --cached --quiet || git commit -m "chore: update published articles list"
+          git add data/published.json data/rate_limits.json
+          git diff --cached --quiet || git commit -m "chore: update published articles and rate limits"
           git push

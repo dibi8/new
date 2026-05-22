@@ -9,11 +9,20 @@ SITE_BASE_URL = "https://dibi8.com"
 # Published articles tracking file
 PUBLISHED_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "published.json")
 
-# Number of articles to publish per run
+# Number of articles to publish per run (per platform)
 ARTICLES_PER_RUN = 1
 
-# Hashtags to include in posts
+# Hashtags to include in posts (fallback pool)
 DEFAULT_HASHTAGS = ["#AI", "#OpenSource", "#DevTools", "#MachineLearning", "#LLM"]
+
+# --- Safety: Anti-Ban Settings ---
+# Add random startup delay (0 to this many seconds) to avoid exact cron timing
+STARTUP_JITTER_MAX = int(os.environ.get("STARTUP_JITTER_MAX", "900"))  # 15 min
+# Delay between posting to different platforms (seconds)
+INTER_PLATFORM_DELAY_MIN = int(os.environ.get("INTER_PLATFORM_DELAY_MIN", "60"))
+INTER_PLATFORM_DELAY_MAX = int(os.environ.get("INTER_PLATFORM_DELAY_MAX", "300"))
+# Skip publishing randomly (probability 0-1) to appear less regular
+RANDOM_SKIP_PROBABILITY = float(os.environ.get("RANDOM_SKIP_PROBABILITY", "0.15"))
 
 # --- Twitter/X ---
 TWITTER_API_KEY = os.environ.get("TWITTER_API_KEY", "")
@@ -37,4 +46,7 @@ REDDIT_CLIENT_ID = os.environ.get("REDDIT_CLIENT_ID", "")
 REDDIT_CLIENT_SECRET = os.environ.get("REDDIT_CLIENT_SECRET", "")
 REDDIT_USERNAME = os.environ.get("REDDIT_USERNAME", "")
 REDDIT_PASSWORD = os.environ.get("REDDIT_PASSWORD", "")
-REDDIT_SUBREDDIT = os.environ.get("REDDIT_SUBREDDIT", "artificial")
+REDDIT_SUBREDDITS = os.environ.get(
+    "REDDIT_SUBREDDITS",
+    os.environ.get("REDDIT_SUBREDDIT", "artificial"),
+)

@@ -5,7 +5,7 @@ import random
 import json
 import re
 import logging
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from typing import Optional
 
 import requests
@@ -14,6 +14,21 @@ from bs4 import BeautifulSoup
 from . import config
 
 logger = logging.getLogger(__name__)
+
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/125.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 Safari/605.1.15",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/125.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:126.0) Gecko/20100101 Firefox/126.0",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/537.36 Chrome/125.0.0.0 Safari/537.36",
+]
+
+
+def _get_session() -> requests.Session:
+    """Create a requests session with a random User-Agent."""
+    session = requests.Session()
+    session.headers.update({"User-Agent": random.choice(USER_AGENTS)})
+    return session
 
 
 @dataclass
@@ -30,7 +45,8 @@ class Article:
 def fetch_rss_articles() -> list[dict]:
     """Fetch all articles from the dibi8.com RSS feed."""
     logger.info("Fetching RSS feed from %s", config.RSS_FEED_URL)
-    resp = requests.get(config.RSS_FEED_URL, timeout=30)
+    session = _get_session()
+    resp = session.get(config.RSS_FEED_URL, timeout=30)
     resp.raise_for_status()
 
     root = ET.fromstring(resp.text)
@@ -54,8 +70,9 @@ def fetch_rss_articles() -> list[dict]:
 def scrape_article_meta(url: str) -> dict:
     """Scrape og:description and og:image from an article page."""
     logger.info("Scraping metadata from %s", url)
+    session = _get_session()
     try:
-        resp = requests.get(url, timeout=30)
+        resp = session.get(url, timeout=30)
         resp.raise_for_status()
     except requests.RequestException as exc:
         logger.warning("Failed to fetch %s: %s", url, exc)
@@ -133,7 +150,10 @@ def save_published(platform: str, url: str) -> None:
 
 
 def get_unpublished_article(platform: str) -> Optional[Article]:
-    """Get a random unpublished article for the given platform."""
+    """Get a random unpublished article for the given platform.
+
+    Prefers newer articles (weighted random) to keep content fresh.
+    """
     all_articles = fetch_rss_articles()
     published = load_published(platform)
 
@@ -141,7 +161,6 @@ def get_unpublished_article(platform: str) -> Optional[Article]:
 
     if not unpublished:
         logger.info("All articles have been published on %s. Resetting.", platform)
-        # Reset: clear published list to start over
         try:
             with open(config.PUBLISHED_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -156,7 +175,9 @@ def get_unpublished_article(platform: str) -> Optional[Article]:
         logger.warning("No articles found at all")
         return None
 
-    chosen = random.choice(unpublished)
+    # Weighted random: newer articles (earlier in list) are more likely to be picked
+    weights = list(range(len(unpublished), 0, -1))
+    chosen = random.choices(unpublished, weights=weights, k=1)[0]
     meta = scrape_article_meta(chosen["url"])
 
     return Article(
