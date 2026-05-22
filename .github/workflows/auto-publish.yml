@@ -1,47 +1,47 @@
-name: Auto Publish dibi8 Articles
+name: 自动发布 dibi8 文章
 
 on:
   schedule:
-    # Staggered triggers at non-round minutes to avoid bot-like patterns.
-    # Combined with 0-50 min startup jitter, actual post times are fully random.
-    # === Asia business hours (UTC+8 09:00–17:00 = UTC 01:00–09:00) ===
+    # 使用非整点分钟触发，避免机器人特征
+    # 加上 0-50 分钟启动延迟，实际发帖时间完全随机
+    # === 亚洲工作时间 (UTC+8 09:00–17:00 = UTC 01:00–09:00) ===
     - cron: '17 1-9 * * *'
-    # === US business hours (UTC-5 09:00–17:00 = UTC 14:00–22:00) ===
+    # === 美国工作时间 (UTC-5 09:00–17:00 = UTC 14:00–22:00) ===
     - cron: '43 14-22 * * *'
-  workflow_dispatch:   # manual trigger
+  workflow_dispatch:   # 手动触发
 
-# Prevent overlapping runs (previous run must finish before next starts)
+# 防止重复运行（上一次必须完成才能开始下一次）
 concurrency:
   group: auto-publish
   cancel-in-progress: false
 
 permissions:
-  contents: write     # push updated published.json and rate_limits.json back
+  contents: write     # 推送更新后的 published.json 和 rate_limits.json
 
 jobs:
   publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 60    # safety net: up to 50 min jitter + publish time
+    timeout-minutes: 60    # 安全限制：最多运行60分钟（含启动延迟）
 
     steps:
-      - name: Checkout
+      - name: 拉取代码
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: 设置 Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: Install dependencies
+      - name: 安装依赖
         run: pip install -r requirements.txt
 
-      - name: Run publisher
+      - name: 运行发布程序
         env:
-          # --- Anti-Ban Settings ---
-          STARTUP_JITTER_MAX: '3000'          # 0-50 min random startup delay (fully random within the hour)
-          INTER_PLATFORM_DELAY_MIN: '60'      # 1-5 min between platforms
+          # --- 防封号设置 ---
+          STARTUP_JITTER_MAX: '3000'          # 随机启动延迟 0-50 分钟（整个小时内随机）
+          INTER_PLATFORM_DELAY_MIN: '60'      # 平台间延迟 1-5 分钟
           INTER_PLATFORM_DELAY_MAX: '300'
-          RANDOM_SKIP_PROBABILITY: '0.15'     # 15% chance to skip (looks human)
+          RANDOM_SKIP_PROBABILITY: '0.15'     # 15% 概率跳过（更像真人）
           # --- Twitter/X ---
           TWITTER_API_KEY: ${{ secrets.TWITTER_API_KEY }}
           TWITTER_API_SECRET: ${{ secrets.TWITTER_API_SECRET }}
@@ -63,10 +63,10 @@ jobs:
           REDDIT_SUBREDDITS: ${{ secrets.REDDIT_SUBREDDITS }}
         run: python run.py
 
-      - name: Commit tracking data
+      - name: 提交发布记录
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/published.json data/rate_limits.json
-          git diff --cached --quiet || git commit -m "chore: update published articles and rate limits"
+          git diff --cached --quiet || git commit -m "更新：已发布文章记录和限流数据"
           git push
