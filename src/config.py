@@ -17,7 +17,7 @@ DEFAULT_HASHTAGS = ["#AI", "#OpenSource", "#DevTools", "#MachineLearning", "#LLM
 
 # --- Safety: Anti-Ban Settings ---
 # Add random startup delay (0 to this many seconds) to avoid exact cron timing
-STARTUP_JITTER_MAX = int(os.environ.get("STARTUP_JITTER_MAX", "900"))  # 15 min
+STARTUP_JITTER_MAX = int(os.environ.get("STARTUP_JITTER_MAX", "3000"))  # 50 min
 # Delay between posting to different platforms (seconds)
 INTER_PLATFORM_DELAY_MIN = int(os.environ.get("INTER_PLATFORM_DELAY_MIN", "60"))
 INTER_PLATFORM_DELAY_MAX = int(os.environ.get("INTER_PLATFORM_DELAY_MAX", "300"))

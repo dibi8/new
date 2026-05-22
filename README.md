@@ -6,7 +6,7 @@ Automatically publishes articles from [dibi8.com](https://dibi8.com) to multiple
 
 | Feature | Description |
 |---------|-------------|
-| **Startup jitter** | Random 0-15 min delay on each run to avoid exact cron timing |
+| **Startup jitter** | Random 0-50 min delay on each run — post time is fully random within each hour window |
 | **Random skip** | 15% chance to skip a run entirely — irregular posting looks human |
 | **Per-platform daily caps** | Twitter: 6/day, Facebook: 4/day, LinkedIn: 2/day, Medium: 1/day, Reddit: 2/day |
 | **Minimum intervals** | Enforced cooldown between posts (Twitter 2h, LinkedIn 6h, Medium 24h, Reddit 8h) |
@@ -96,7 +96,7 @@ All configuration is via environment variables (or GitHub Secrets).
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `STARTUP_JITTER_MAX` | `900` | Max random startup delay in seconds (0-15 min) |
+| `STARTUP_JITTER_MAX` | `3000` | Max random startup delay in seconds (0-50 min, covers full hour) |
 | `INTER_PLATFORM_DELAY_MIN` | `60` | Min delay between platform posts (seconds) |
 | `INTER_PLATFORM_DELAY_MAX` | `300` | Max delay between platform posts (seconds) |
 | `RANDOM_SKIP_PROBABILITY` | `0.15` | Probability (0-1) to skip a run entirely |

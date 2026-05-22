@@ -2,10 +2,12 @@ name: Auto Publish dibi8 Articles
 
 on:
   schedule:
+    # Staggered triggers at non-round minutes to avoid bot-like patterns.
+    # Combined with 0-50 min startup jitter, actual post times are fully random.
     # === Asia business hours (UTC+8 09:00–17:00 = UTC 01:00–09:00) ===
-    - cron: '0 1-9 * * *'
-    # === US business hours reversed (UTC-5 09:00–17:00 = UTC 14:00–22:00) ===
-    - cron: '0 14-22 * * *'
+    - cron: '17 1-9 * * *'
+    # === US business hours (UTC-5 09:00–17:00 = UTC 14:00–22:00) ===
+    - cron: '43 14-22 * * *'
   workflow_dispatch:   # manual trigger
 
 # Prevent overlapping runs (previous run must finish before next starts)
@@ -19,7 +21,7 @@ permissions:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    timeout-minutes: 30    # safety net: max 30 min per run
+    timeout-minutes: 60    # safety net: up to 50 min jitter + publish time
 
     steps:
       - name: Checkout
@@ -36,7 +38,7 @@ jobs:
       - name: Run publisher
         env:
           # --- Anti-Ban Settings ---
-          STARTUP_JITTER_MAX: '900'           # 0-15 min random startup delay
+          STARTUP_JITTER_MAX: '3000'          # 0-50 min random startup delay (fully random within the hour)
           INTER_PLATFORM_DELAY_MIN: '60'      # 1-5 min between platforms
           INTER_PLATFORM_DELAY_MAX: '300'
           RANDOM_SKIP_PROBABILITY: '0.15'     # 15% chance to skip (looks human)
