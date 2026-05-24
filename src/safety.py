@@ -109,7 +109,7 @@ def human_delay(min_seconds: int = 30, max_seconds: int = 180) -> None:
 
 
 def jitter_delay() -> None:
-    """Add a small random startup delay (0-15 min) to avoid exact cron timing."""
-    delay = random.randint(0, 900)
+    """Add a random startup delay to avoid exact cron timing."""
+    delay = random.randint(0, config.STARTUP_JITTER_MAX)
     logger.info("Startup jitter: waiting %d seconds (%.1f min)", delay, delay / 60)
     time.sleep(delay)
