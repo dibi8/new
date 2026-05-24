@@ -1,7 +1,7 @@
 """Main scheduler with anti-ban protections.
 
-Safety features:
-- Startup jitter (0-15 min random delay to avoid exact cron timing)
+Runs on a 15-minute heartbeat. Safety features prevent over-posting:
+- Startup jitter (0-10 min random delay to avoid exact cron timing)
 - Random skip (15% chance to skip a run entirely, looks more human)
 - Inter-platform delays (1-5 min between posting to different platforms)
 - Per-platform daily caps and minimum intervals

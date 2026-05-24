@@ -23,7 +23,7 @@ Automatically publishes articles from [dibi8.com](https://dibi8.com) to multiple
 
 - **RSS-based scraping** — fetches articles from dibi8.com's RSS feed (257+ articles)
 - **Multi-platform publishing** — Twitter/X, Facebook, LinkedIn, Medium, Reddit
-- **Smart scheduling** — runs every hour during business hours in both Asia and US timezones
+- **Smart scheduling** — 15-minute heartbeat during business hours in both Asia and US timezones
 - **Duplicate prevention** — tracks published articles per platform in `data/published.json`
 - **Auto-reset** — when all articles have been published, resets and starts cycling again
 - **Graceful degradation** — unconfigured platforms are silently skipped
@@ -35,8 +35,8 @@ Automatically publishes articles from [dibi8.com](https://dibi8.com) to multiple
 | Asia (UTC+8) | 09:00 – 17:00 | 01:00 – 09:00 |
 | US (UTC-5) | 09:00 – 17:00 | 14:00 – 22:00 |
 
-The workflow runs **every hour** during these windows = **18 cron triggers/day**.
-With random skips (~15%) and rate limits, actual posts per platform are much lower.
+The workflow runs on a **15-minute heartbeat** during these windows = **~72 cron triggers/day**.
+With random skips (~15%), startup jitter, daily caps, and cooldowns, actual posts per platform stay human-like.
 
 ## Quick Start
 
@@ -96,7 +96,7 @@ All configuration is via environment variables (or GitHub Secrets).
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `STARTUP_JITTER_MAX` | `3000` | Max random startup delay in seconds (0-50 min, covers full hour) |
+| `STARTUP_JITTER_MAX` | `600` | Max random startup delay in seconds (0-10 min, fits 15-min heartbeat) |
 | `INTER_PLATFORM_DELAY_MIN` | `60` | Min delay between platform posts (seconds) |
 | `INTER_PLATFORM_DELAY_MAX` | `300` | Max delay between platform posts (seconds) |
 | `RANDOM_SKIP_PROBABILITY` | `0.15` | Probability (0-1) to skip a run entirely |
